@@ -6,8 +6,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity, UserRepository } from 'core';
-
 import { TokenService } from './jwt.service';
+import { JwtPayload } from 'common';
 
 @Injectable()
 export class Userservice {
@@ -41,9 +41,8 @@ export class Userservice {
       throw new NotFoundException('User not found');
     }
 
-    const payload = {
+    const payload:JwtPayload = {
       id: user.id,
-      email: user.email,
       role: user.role,
     };
 

@@ -1,4 +1,4 @@
-import { CreateProductDto, UpdateProductDto } from '@dtos';
+import { CreateProductDto, ProductsQueryDto, UpdateProductDto } from '@dtos';
 import { RolesGuard } from '@guards';
 import {
   Body,
@@ -8,6 +8,7 @@ import {
   Param,
   Post,
   Put,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 
@@ -24,8 +25,8 @@ export class ProductsController {
   }
 
   @Get()
-  findAll() {
-    return this.productsService.findAll();
+  findAll(@Query() query: ProductsQueryDto) {
+    return this.productsService.findAll(query);
   }
 
   @Get(':id')

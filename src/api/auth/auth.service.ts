@@ -1,24 +1,54 @@
 import { AuthLoginDto, AuthRegisterdto, TokenResponseDto } from '@dtos';
 import { Injectable } from '@nestjs/common';
-import { Userservice } from '@services';
+import { TokenService, Userservice } from '@services';
 
 @Injectable()
 export class AuthService {
-  constructor(private readonly userService: Userservice) {}
+  constructor(
+    private readonly userService: Userservice,
+    private readonly jwtService: TokenService
+    ) {}
   async register(createAuthDto: AuthRegisterdto) {
     const result = await this.userService.create(createAuthDto);
     return result;
   }
 
   async login(authLoginDto: AuthLoginDto) {
-    const result = await this.userService.login(authLoginDto);
+    const user = await this.userService.login(authLoginDto);
 
-    return result;
+    const payload={
+      id:user.id,
+      email:user.email,
+      role:user.role  
+    }
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.createAccessToken(payload),
+      this.jwtService.createRefreshToken(payload)
+    ])
+    return {
+      message: 'User logged in successfully',
+      access_token,
+      refresh_token
+    }
   }
 
   async refresh(refreshTokenDto: TokenResponseDto) {
-    const result = await this.userService.refresh(refreshTokenDto);
+    const payload = await this.jwtService.verifyRefreshToken(
+      refreshTokenDto.refresh_token
+    );
 
-    return result;
+    delete payload.iat;
+    delete payload.exp;
+    
+    const [access_token, refresh_token] = await Promise.all([
+      this.jwtService.createAccessToken(payload),
+      this.jwtService.createRefreshToken(payload)
+    ])
+
+    return {
+      message: 'Token refreshed successfully',
+      access_token,
+      refresh_token
+    };
   }
 }

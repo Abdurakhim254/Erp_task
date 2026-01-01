@@ -6,15 +6,14 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserEntity, UserRepository } from 'core';
-import { TokenService } from './jwt.service';
-import { JwtPayload } from 'common';
+import { BcryptService } from './bcrypt.service';
 
 @Injectable()
 export class Userservice {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: UserRepository,
-    private readonly jwtService: TokenService,
+    private readonly bcryptservice: BcryptService
   ) {}
 
   async create(createAuthDto: AuthRegisterdto) {
@@ -23,11 +22,12 @@ export class Userservice {
       throw new ConflictException('User already exists');
     }
 
+    createAuthDto.password=await this.bcryptservice.hashPassword(createAuthDto.password);
     const newuser = this.userRepository.create(createAuthDto);
 
     return {
       message: 'User created successfully',
-      user: await this.userRepository.save(newuser),
+      user: await this.userRepository.save(newuser)
     };
   }
 
@@ -38,42 +38,19 @@ export class Userservice {
   async login(authLoginDto: AuthLoginDto) {
     const user = await this.getUserByemail(authLoginDto.email);
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('Email or password is incorrect');
     }
 
-    const payload:JwtPayload = {
-      id: user.id,
-      role: user.role,
-    };
-
-    const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.createAccessToken(payload),
-      this.jwtService.createRefreshToken(payload),
-    ]);
-
-    return {
-      message: 'User logged in successfully',
-      access_token,
-      refresh_token,
-    };
-  }
-
-  async refresh(refreshTokenDto: TokenResponseDto) {
-    const payload = await this.jwtService.verifyRefreshToken(
-      refreshTokenDto.refresh_token,
+    const isPasswordMatch = await this.bcryptservice.comparePassword(
+      authLoginDto.password,
+      user.password
     );
+    if (!isPasswordMatch) {
+      throw new NotFoundException('Email or password is incorrect');
+    }
 
-    delete payload.iat;
-    delete payload.exp;
-
-    const [access_token, refresh_token] = await Promise.all([
-      this.jwtService.createAccessToken(payload),
-      this.jwtService.createRefreshToken(payload),
-    ]);
-
-    return {
-      access_token,
-      refresh_token,
-    };
+    return user;
   }
+
+  
 }
